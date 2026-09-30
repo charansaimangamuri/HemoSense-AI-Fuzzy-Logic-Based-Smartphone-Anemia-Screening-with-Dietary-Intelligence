@@ -27,6 +27,7 @@ Thumbs.db
 *.pth
 *.pt
 *.onnx
+*.keras
 
 # Environment / secrets
 .env
