@@ -68,8 +68,8 @@ def extract_conjunctiva_roi(image):
 
     if len(faces) == 0:
         print("  [Warning] No face detected. Using lower-center crop as fallback.")
-        # Fallback: crop bottom-third centre — typical position for a held-up phone selfie
-        return image[int(h_img * 0.35):int(h_img * 0.55), int(w_img * 0.25):int(w_img * 0.75)]
+        # Fallback: crop bottom-half centre — where the conjunctiva sits in macro shots
+        return image[int(h_img * 0.50):int(h_img * 0.95), int(w_img * 0.15):int(w_img * 0.85)]
 
     # Pick the largest detected face
     faces = sorted(faces, key=lambda r: r[2] * r[3], reverse=True)
@@ -83,7 +83,7 @@ def extract_conjunctiva_roi(image):
     if len(eyes) == 0:
         print("  [Warning] No eye detected within face. Using lower-face crop as fallback.")
         # Use lower half of face (where eyes/conjunctiva typically sit)
-        return face_roi_color[int(fh * 0.2):int(fh * 0.6), :]
+        return face_roi_color[int(fh * 0.50):int(fh * 0.95), int(fw * 0.15):int(fw * 0.85)]
 
     # Pick the most prominent eye (largest area)
     eyes = sorted(eyes, key=lambda r: r[2] * r[3], reverse=True)

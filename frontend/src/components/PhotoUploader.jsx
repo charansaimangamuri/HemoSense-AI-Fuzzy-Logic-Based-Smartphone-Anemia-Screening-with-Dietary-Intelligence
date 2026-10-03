@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { MAX_IMAGES, MIN_IMAGES } from '../api.js'
 import Icon from './Icon.jsx'
 
@@ -16,9 +16,64 @@ let nextId = 1
 
 export default function PhotoUploader({ photos, setPhotos, disabled }) {
   const fileInput = useRef(null)
-  const cameraInput = useRef(null)
   const [dragging, setDragging] = useState(false)
   const [notice, setNotice] = useState(null)
+  
+  // WebRTC Camera State
+  const [isCameraOpen, setIsCameraOpen] = useState(false)
+  const videoRef = useRef(null)
+  const streamRef = useRef(null)
+
+  async function openCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+      })
+      streamRef.current = stream
+      setIsCameraOpen(true)
+    } catch (err) {
+      alert("Camera access denied or unavailable on this device.")
+    }
+  }
+
+  function closeCamera() {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop())
+      streamRef.current = null
+    }
+    setIsCameraOpen(false)
+  }
+
+  function capturePhoto() {
+    if (!videoRef.current) return
+    const video = videoRef.current
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    
+    canvas.toBlob((blob) => {
+      if (!blob) return
+      const file = new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' })
+      addFiles([file])
+      closeCamera()
+    }, 'image/jpeg', 0.9)
+  }
+
+  useEffect(() => {
+    if (isCameraOpen && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current
+    }
+  }, [isCameraOpen])
+
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop())
+      }
+    }
+  }, [])
 
   function addFiles(fileList) {
     const incoming = Array.from(fileList || [])
@@ -80,7 +135,24 @@ export default function PhotoUploader({ photos, setPhotos, disabled }) {
       </div>
 
       <div className="card-body">
-        {photos.length === 0 ? (
+        {isCameraOpen ? (
+          <div className="camera-container" style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', padding: '20px', background: '#f8f9fa', borderRadius: '8px' }}>
+            <video 
+              ref={videoRef} 
+              autoPlay 
+              playsInline 
+              style={{ width: '100%', maxWidth: '400px', borderRadius: '8px', backgroundColor: '#000', transform: 'scaleX(-1)' }} 
+            />
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button type="button" className="btn btn-primary" onClick={capturePhoto} style={{ background: '#2563eb', color: 'white', border: 'none' }}>
+                <Icon name="camera" size={16} /> Capture
+              </button>
+              <button type="button" className="btn" onClick={closeCamera}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : photos.length === 0 ? (
           <div
             className={`dropzone ${dragging ? 'dragging' : ''} ${locked ? 'disabled' : ''}`}
             onDragOver={(e) => {
@@ -106,13 +178,14 @@ export default function PhotoUploader({ photos, setPhotos, disabled }) {
                 type="button"
                 className="btn"
                 disabled={locked}
-                onClick={() => cameraInput.current?.click()}
+                onClick={openCamera}
               >
                 <Icon name="camera" size={16} /> Use camera
               </button>
             </div>
             <p className="hint">JPG, PNG, WEBP or BMP · up to {MAX_MB} MB each</p>
           </div>
+
         ) : (
           <ul
             className="thumbs"
@@ -181,17 +254,6 @@ export default function PhotoUploader({ photos, setPhotos, disabled }) {
           type="file"
           accept={ACCEPTED.join(',')}
           multiple
-          hidden
-          onChange={(e) => {
-            addFiles(e.target.files)
-            e.target.value = ''
-          }}
-        />
-        <input
-          ref={cameraInput}
-          type="file"
-          accept="image/*"
-          capture="environment"
           hidden
           onChange={(e) => {
             addFiles(e.target.files)

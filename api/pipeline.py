@@ -170,8 +170,6 @@ def screen_image_bytes(img_bytes: bytes, include_roi: bool = False):
 
     roi = extract_conjunctiva_roi(bgr)
     roi_note = None
-    # TODO: extract_conjunctiva_roi prints warnings; surface the fallback as a note
-    # by re-checking: a fallback keeps the user's guidance minimal — fine for now.
 
     corrected = apply_fuzzy_correction(roi)
 
